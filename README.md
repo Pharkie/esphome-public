@@ -48,7 +48,9 @@ The display comes with a cable from the ePaper to Dupoint wires for connecting t
 
 Purchase: £8 for this EEMB battery from Amazon UK: https://amzn.eu/d/aDqnDVv
 
-Notes: Lipo 2000mah battery. Buy one with built-in protection against overcharging or rapid discharge etc. 
+Notes: Lipo 2000mah battery. Buy one with built-in protection against overcharging or rapid discharge etc.
+
+**Important:** Make sure the battery polarity on the JST connector (red and black wires) matches what the Firebeetle2 needs BEFORE plugging in. The red and black wires are often the wrong way around.
 
 ### Stand
 
