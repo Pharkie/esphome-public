@@ -32,6 +32,8 @@ esphome:
             and:
               - time.has_time
               - lambda: 'return id(data_updated) == true;'
+              - lambda: 'return id(batt_voltage).has_state();'
+              - lambda: 'return id(batt_percentage).has_state();'
           timeout: 20s
       # Log if data received or was timed out
       - if:
