@@ -7,7 +7,7 @@ Here's is a portable, battery-powered 2.9" ePaper display of the current Bitcoin
 ![Photo of device from front](images/actual_devices/Front-right.jpeg)
 
 ## Firebeetle2 ESP32-C6
-This is a great device for ESPHome. It's widely available, has Wifi6, deep sleep and costs only £8 / $10. As an ESP32-C6 device, the Firebeetle2 not widely supported by ESPHome, yet. My configuration shows how to get it working, at least for now. (Note, there are other Firebeetle2 devices that are not the C6 chip).
+This is a great device for ESPHome. It's widely available, has Wifi6, deep sleep and costs only £8 / $10. As an ESP32-C6 device, the Firebeetle2 is not widely supported by ESPHome, yet. My configuration shows how to get it working, at least for now. (Note, there are other Firebeetle2 devices that are not the C6 chip).
 
 ## Features
 
