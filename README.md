@@ -1,6 +1,8 @@
 # Bitcoin Price 2.9" ePaper for ESPHome
 
-[firebeetle2.yaml](firebeetle2.yaml) is an ESPHome configuration for a Firebeetle 2 ESP32-C6 to display the current Bitcoin price and system status on a Waveshare 2.9" black and white ePaper display. The configuration tells the Firebeetle2 to periodically wake up, update the display with sensor data, then go back to deep sleep.
+Here's is a portable, battery-powered 2.9" ePaper display of the current Bitcoin price from Coingecko, powered by ESPHome.
+
+[firebeetle2.yaml](firebeetle2.yaml) is an ESPHome configuration for a Firebeetle 2 ESP32-C6 with a Waveshare 2.9" black and white ePaper display. The configuration tells the Firebeetle2 to periodically wake up, update the display with sensor data, then go back to deep sleep. My device is awake about 8 seconds per hour, which I'm hoping will mean long battery life.
 
 ![Photo of device from front](images/actual_devices/Front-right.jpeg)
 
