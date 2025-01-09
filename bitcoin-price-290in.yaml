@@ -1,0 +1,286 @@
+# This is for the ESP32-C3 with the Waveshare 2.9" black and white ePaper.
+
+substitutions:
+  device_name: bitcoin-price-290in
+
+logger:
+  level: DEBUG  # Set logging level (DEBUG for verbose output)
+  baud_rate: 115200  # Set the baud rate for logging output
+
+esphome:
+  name: ${device_name}
+
+  on_boot:
+      priority: 200.0
+      then:
+        - component.update: adam_epaper1
+        - wait_until:
+            condition:
+              lambda: 'return id(data_updated) == true;'
+              # Wait a bit longer so all the items are received
+        - delay: 5s
+        - logger.log: "Initial sensor data received: Refreshing display..."
+        - lambda: 'id(initial_data_received) = true;'
+        - script.execute: update_screen
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret bitcoin-price-290in_api_encryption_key
+
+ota:
+  platform: esphome
+  password: !secret bitcoin-price-290in_ota_password
+
+button:
+  - platform: shutdown
+    name: "Bitcoin - Shutdown"
+  - platform: restart
+    name: "Bitcoin - Restart"
+  - platform: template
+    name: "Bitcoin - Refresh Screen"
+    entity_category: config
+    on_press:
+      - script.execute: update_screen
+
+captive_portal:
+
+# Global variables for detecting if the display needs to be refreshed. (Thanks @paviro!)
+globals:
+  - id: data_updated
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: initial_data_received
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: recorded_display_refresh
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: bitcoin_price_formatted
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+# Script for updating screen - Refresh display and publish refresh count and time. (Thanks @paviro!)
+script:
+  - id: update_screen
+    then:
+      - logger.log: "Executing update_screen script"
+      - lambda: 'id(data_updated) = false;'
+      - component.update: adam_epaper1
+      - lambda: 'id(recorded_display_refresh) += 1;'
+      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'
+      - logger.log: "Screen updated and refresh count published"
+      
+# Check whether the display needs to be refreshed, once per minute
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    on_time:
+      - seconds: 0
+        minutes: /1
+        then:
+          - script.execute: update_screen
+          # - if:
+          #     condition:
+          #       lambda: 'return id(data_updated) == true;'
+          #     then:
+          #       - logger.log: "Sensor data updated: refreshing display..."
+          #       - script.execute: update_screen
+          #     else:
+          #       - logger.log: "No sensors updated - skipping display refresh."
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  on_connect:
+    - logger.log: "WiFi connected, updating bitcoin graph..."
+    - component.update: bitcoin_graph
+
+sensor:
+  - platform: homeassistant
+    name: "${device_name} Received Bitcoin Current Price"
+    entity_id: sensor.bitcoin_current_price
+    id: bitcoin_current_price
+    on_value:
+      then:
+        - lambda: |-
+            id(data_updated) = true;
+            float price = id(bitcoin_current_price).state;
+            char price_str[10];
+            snprintf(price_str, sizeof(price_str), "%.2f", price);
+            std::string price_formatted = price_str;
+            int insert_position = price_formatted.find('.') - 3;
+            while (insert_position > 0) {
+              price_formatted.insert(insert_position, ",");
+              insert_position -= 3;
+            }
+            id(bitcoin_price_formatted) = price_formatted;
+
+  - platform: homeassistant
+    name: "${device_name} Received Bitcoin All Time High"
+    entity_id: sensor.bitcoin_all_time_high
+    id: bitcoin_all_time_high
+
+  # Create sensors for monitoring device remotely.
+  - platform: template
+    name: "${device_name} Display Last Update"
+    device_class: timestamp
+    entity_category: "diagnostic"
+    id: display_last_update
+    
+  - platform: template
+    name: "${device_name} Display Refreshes"
+    id: display_refreshes
+    accuracy_decimals: 0
+    unit_of_measurement: "Refreshes"
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    update_interval: 60min  # Updates sent to HA once per hour
+    lambda: |-
+      return id(recorded_display_refresh);   
+  
+  - platform: wifi_signal
+    name: "${device_name} WiFi Signal Strength"
+    id: wifisignal
+    unit_of_measurement: "dBm"
+    entity_category: "diagnostic"
+    update_interval: 60min
+
+# Enable HTTP Request component
+http_request:
+  useragent: esphome/1.0  # Optional: Set a custom user agent
+
+online_image:
+  - id: bitcoin_graph
+    url: "http://homeassistant.local:8123/local/bitcoin_graph.png"
+    format: png
+    update_interval: never  # No automatic interval updates. Updates on boot + time trigger, above.
+
+font:
+  - file:
+      type: gfonts
+      family: Montserrat
+      weight: 400
+    size: 30
+    id: font_title
+    extras: # Add dollar symbol $
+      - file: "gfonts://Montserrat"
+        glyphs: [$]
+
+  - file:
+      type: gfonts
+      family: Montserrat
+      weight: 400
+    size: 20
+    id: font_subtitle
+    extras: # Add dollar symbol $
+      - file: "gfonts://Montserrat"
+        glyphs: [$]
+
+  - file:
+      type: gfonts
+      family: Montserrat
+      weight: 400
+    size: 10
+    id: font_footer
+
+  - file: 'fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi
+    size: 10
+    glyphs:
+      # WiFi
+      - "\U000F0928" # mdi-wifi-strength-4
+      - "\U000F0925" # mdi-wifi-strength-3 
+      - "\U000F0922" # mdi-wifi-strength-2
+      - "\U000F091F" # mdi-wifi-strength-1
+      - "\U000F092B" # mdi-wifi-strength-alert-outline
+
+# Define colors
+# These look the wrong way around but it's because HA works on both LCD and ePaper displays.
+# On the ePaper display, white means no colour (000000). Black means max colour (FFFFFF).
+# See https://github.com/esphome/issues/issues/3132
+color: 
+  - id: colour_white
+    hex: "000000"
+  - id: colour_black
+    hex: "FFFFFF"
+
+spi:
+  clk_pin: 4       # SCK (SPI Clock) / SCL / CLK on the board - Yellow / YellowHAT
+  mosi_pin: 6      # MOSI (SPI Data Input) / SDA / DIN on the board - Blue / BlueHAT
+
+display:
+  - platform: waveshare_epaper
+    model: 2.90inV2
+    cs_pin: 7        # CS (Chip Select) - Orange
+    dc_pin: 1        # D/C (Data/Command) - Green
+    busy_pin: 3      # BUSY (Busy signal) - Purple
+    reset_pin: 2     # RES (Reset) - White
+    reset_duration: 2ms
+    rotation: 270
+    full_update_every: 1
+    update_interval: never
+    id: adam_epaper1
+    lambda: |-
+      ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
+      if (isnan(id(bitcoin_current_price).state)) {
+        // Awaiting data
+        it.printf(148, 65, id(font_title), id(colour_black), TextAlign::BASELINE_CENTER, "Awaiting data...");
+      }
+      else {
+        ESP_LOGD("display", "Writing Bitcoin graph");
+        if (id(bitcoin_graph) != nullptr) {
+          ESP_LOGD("display", "Displaying Bitcoin graph image.");
+          // Fix inverted image: https://github.com/esphome/feature-requests/issues/1463
+          it.image(0, 0, id(bitcoin_graph), COLOR_OFF, COLOR_ON);
+        } else {
+          ESP_LOGD("display", "Bitcoin graph image not ready.");
+        }
+
+        // Draw blanking rectangle behind Bitcoin price
+        it.filled_rectangle(35, it.get_height()-20-35, 245, 35, id(colour_white));
+
+        // Draw main text with formatted price
+        ESP_LOGD("bitcoin_current_price", "Displaying bitcoin price: $%.0f", id(bitcoin_current_price).state);
+        ESP_LOGD("bitcoin_current_price", "Formatted Bitcoin price: %s", id(bitcoin_price_formatted).c_str());
+        it.printf(it.get_width() / 2, it.get_height()-20, id(font_title), id(colour_black), TextAlign::BOTTOM_CENTER, "Bitcoin: $%s", id(bitcoin_price_formatted).c_str());
+
+        /* FOOTER */
+        it.strftime(it.get_width()-11, it.get_height()-10, id(font_footer), id(colour_black), TextAlign::BASELINE_RIGHT, "Updated %H:%M %d%b%y", id(homeassistant_time).now());
+        
+        // Draw WiFi signal strength
+        if(id(wifisignal).has_state()) {
+          const char* wifi_icon;
+          const char* wifi_log;
+
+          if (id(wifisignal).state >= -50) {
+              wifi_icon = "\U000F0928";  // Excellent
+              wifi_log = "Excellent";
+          } else if (id(wifisignal).state >= -60) {
+              wifi_icon = "\U000F0925";  // Good
+              wifi_log = "Good";
+          } else if (id(wifisignal).state >= -75) {
+              wifi_icon = "\U000F0922";  // Fair
+              wifi_log = "Fair";
+          } else if (id(wifisignal).state >= -100) {
+              wifi_icon = "\U000F091F";  // Weak
+              wifi_log = "Weak";
+          } else {
+              wifi_icon = "\U000F092B";  // Very weak
+              wifi_log = "Very weak";
+          }
+
+          it.print(it.get_width(), it.get_height()-10, id(font_mdi), id(colour_black), TextAlign::BOTTOM_RIGHT, wifi_icon);
+          ESP_LOGI("WiFi", wifi_log);
+        }
+      }
