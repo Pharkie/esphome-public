@@ -22,18 +22,33 @@ external_components:
 esphome:
   name: ${device_name}
 
-  # Boot: start up, get data, update screen, go back to sleep. Completes in 7 seconds.
+  # Boot runs on startup and on wake from deep sleep
+  # Sequence: start up, get data, update screen, go back to sleep. Completes in 7 seconds.
   on_boot:
-    priority: -100.0
+    priority: -100.0 # # -100 waits till boot of everything else is finished
     then:
       - logger.log: "Booted, waiting until sensors updated."
       - script.execute: update_screen # Display "Awaiting data..." while we get data
+      - delay: ${screen_update_time} # Wait for screen refresh
       - wait_until:
           condition:
             and:
+              - wifi.connected
+              - api.connected
               - time.has_time
               - lambda: 'return id(data_updated) == true;'
-          timeout: 20s
+          timeout: 30s
+      - if:
+          condition:
+            lambda: 'return id(data_updated) == true;'
+          then:
+            - logger.log:
+                format: "Boot: data updated successfully."
+                level: INFO
+          else:
+            - logger.log:
+                format: "Boot: timed out waiting for data update."
+                level: WARN
       - script.execute: update_screen # Now update the screen to show the data received
       - delay: ${screen_update_time} # Wait for screen refresh
       - script.execute: start_deep_sleep # Go to sleep
@@ -105,10 +120,6 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
-  - id: initial_data_received
-    type: bool
-    restore_value: no
-    initial_value: 'false'
   - id: recorded_display_refresh
     type: int
     restore_value: yes
@@ -120,6 +131,7 @@ globals:
 
 script:
   - id: update_screen
+    mode: queued
     then:
       - logger.log: "Executing update_screen script"
       - lambda: 'id(data_updated) = false;'
@@ -178,7 +190,7 @@ wifi:
 
 sensor:
   - platform: homeassistant
-    name: "${device_name} Received Bitcoin Current Price"
+    name: "${device_name} Bitcoin Current Price from HA"
     entity_id: sensor.bitcoin_current_price
     id: bitcoin_current_price
     on_value:
@@ -363,7 +375,7 @@ display:
         // Show last updated date and time
         it.strftime(it.get_width()-18, it.get_height()-36, id(font_footer), id(colour_black), TextAlign::TOP_RIGHT, "%d%b%y %H:%M", id(homeassistant_time).now());
         // "Refresh" icon
-        it.print(it.get_width()-18-95, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
+        it.print(it.get_width()-18-105, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
         
         // Draw WiFi signal strength
         if(id(wifisignal).has_state()) {
