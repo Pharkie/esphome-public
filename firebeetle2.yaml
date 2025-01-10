@@ -8,7 +8,7 @@ substitutions:
   screen_update_time: 5s
 
 logger:
-  level: ERROR # Set logging level (DEBUG for verbose output)
+  level: DEBUG # Set logging level (DEBUG for verbose output)
   baud_rate: 115200  # Set the baud rate for logging output
 
 external_components:
@@ -26,31 +26,22 @@ esphome:
   on_boot:
     priority: -100.0
     then:
-      - logger.log: "Booted, waiting until sensors updated."     
+      - logger.log: "Booted, waiting until sensors updated."
+      - script.execute: update_screen # Display "Awaiting data..." while we get data
       - wait_until:
           condition:
             and:
               - time.has_time
               - lambda: 'return id(data_updated) == true;'
-              - lambda: 'return id(batt_voltage).has_state();'
-              - lambda: 'return id(batt_percentage).has_state();'
           timeout: 20s
-      # Log if data received or was timed out
-      - if:
-          condition:
-            lambda: 'return id(data_updated) == true;'
-          then:
-            - logger.log: "Boot: data updated, updating screen"
-          else:
-            - logger.log: "Boot: timed out waiting for data update"
-      - script.execute: update_screen
-      - delay: ${screen_update_time}
-      - script.execute: start_deep_sleep
+      - script.execute: update_screen # Now update the screen to show the data received
+      - delay: ${screen_update_time} # Wait for screen refresh
+      - script.execute: start_deep_sleep # Go to sleep
 
 safe_mode:
   boot_is_good_after: 3s  # Reduce the time to consider boot successful
-  num_attempts: 10  # Number of failed boot attempts before entering safe mode
-  reboot_timeout: 10min  # Duration to remain in safe mode before rebooting
+  num_attempts: 5  # Number of failed boot attempts before entering safe mode
+  reboot_timeout: 1min  # Duration to remain in safe mode before rebooting
   on_safe_mode:
     then:
       - logger.log: "Entering safe mode due to repeated boot failures"
@@ -205,6 +196,8 @@ sensor:
               insert_position -= 3;
             }
             id(bitcoin_price_formatted) = price_formatted;
+            
+            // Only this data matters enough to flag for screen update
             id(data_updated) = true;
 
   - platform: homeassistant
@@ -222,7 +215,8 @@ sensor:
     filters:
       - multiply: 2.0
     on_value:
-      - component.update: batt_percentage
+      then:
+        - component.update: batt_percentage
 
   - platform: template
     name: "${friendly_name} Battery"
@@ -353,8 +347,9 @@ display:
     lambda: |-
       ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
 
-      if (isnan(id(bitcoin_current_price).state)) {
+      if (isnan(id(bitcoin_current_price).state) && !isnan(id(display_refreshes).state)) {
         it.printf(148, 65, id(font_subtitle), id(colour_black), TextAlign::BASELINE_CENTER, "Awaiting data...");
+        it.printf(148, 85, id(font_footer), id(colour_black), TextAlign::BASELINE_CENTER, "Refreshes: %d", (int)id(display_refreshes).state);
       }
       else {
         // Draw main text with formatted price
@@ -387,7 +382,7 @@ display:
           it.print(it.get_width(), it.get_height()-36, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, wifi_icon);
         }
 
-        if (id(batt_percentage).has_state()) {
+        if (id(batt_voltage).has_state() && id(batt_percentage).has_state()) {
           // Draw battery icon
           const char* battery_icon = "\U000F125E";  // Default to "Battery slashed" icon
           
