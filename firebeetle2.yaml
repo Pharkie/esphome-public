@@ -127,31 +127,43 @@ binary_sensor:
   - platform: status
     name: ${friendly_name} Status 
 
-# Global variables for detecting if the display needs to be refreshed. (Thanks @paviro!)
+# Global variable to track if the display needs to be refreshed: thanks @paviro.
 globals:
   - id: data_updated
     type: bool
     restore_value: no
     initial_value: 'false'
-  - id: recorded_display_refresh
-    type: int
-    restore_value: yes
-    initial_value: '0'
   - id: bitcoin_price_formatted
     type: std::string
     restore_value: no
     initial_value: '""'
 
 script:
+  - id: update_sensors
+    # Since sensors are set to update: never
+    mode: queued
+    then:
+      # component.update publishes the sensor to HA
+      - component.update: display_refreshes 
+      - component.update: battery_voltage # Calls component.update: battery_percentage
+
   - id: update_screen
     mode: queued
     then:
       - logger.log: "Executing update_screen script"
-      - lambda: 'id(data_updated) = false;'
+      - script.execute: update_sensors
+      - wait_until:
+          condition:
+            and:
+              - lambda: 'return !isnan(id(display_refreshes).state);'
+              - lambda: 'return !isnan(id(battery_voltage).state);'
+              - lambda: 'return !isnan(id(battery_percentage).state);'
+          timeout: 5s
+      - lambda: |-
+          id(data_updated) = false;
+          id(display_refreshes).publish_state(id(display_refreshes).state + 1);
       - component.update: adam_epaper1
-      - lambda: 'id(recorded_display_refresh) += 1;'
-      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'
-      - logger.log: "Screen updated and refresh count published"
+      - logger.log: "Screen updated. Refresh count, battery voltage, and percentage sensors published."
   - id: start_deep_sleep
     mode: queued
     then:
@@ -202,6 +214,7 @@ wifi:
   fast_connect: true
 
 sensor:
+  # Bitcoin Current Price
   - platform: homeassistant
     name: "${device_name} Bitcoin Current Price from HA"
     entity_id: sensor.bitcoin_current_price
@@ -225,6 +238,7 @@ sensor:
             // Only this data matters enough to flag for screen update
             id(data_updated) = true;
 
+  # Bitcoin All time high price
   - platform: homeassistant
     name: "${device_name} Received Bitcoin All Time High"
     entity_id: sensor.bitcoin_all_time_high
@@ -233,25 +247,26 @@ sensor:
   # Battery voltage
   - platform: adc
     name: "${friendly_name} Battery Voltage"
-    id: batt_voltage
+    id: battery_voltage
     pin: GPIO0
     accuracy_decimals: 2
-    update_interval: 60min
+    update_interval: never # Only updated by script
     filters:
       - multiply: 2.0
     on_value:
       then:
-        - component.update: batt_percentage
+        - component.update: battery_percentage
 
+  # Battery percentage
   - platform: template
     name: "${friendly_name} Battery"
-    id: batt_percentage
+    id: battery_percentage
     unit_of_measurement: "%"
     accuracy_decimals: 0
-    update_interval: 60min
+    update_interval: never # Only updated by script
     device_class: battery
     lambda: |-
-      float voltage = id(batt_voltage).state;
+      float voltage = id(battery_voltage).state;
       int percentage = (voltage - 3.3) / (4.1 - 3.3) * 100;
       if (percentage < 0) {
         percentage = 0;
@@ -260,12 +275,15 @@ sensor:
       }
       return percentage;
 
+  # Display last update time
   - platform: template
     name: "${device_name} Display Last Update"
+    id: display_last_update
     device_class: timestamp
     entity_category: "diagnostic"
-    id: display_last_update
+    update_interval: never # Only updated by script
 
+  # Display refreshes count
   - platform: template
     name: "${device_name} Display Refreshes"
     id: display_refreshes
@@ -273,10 +291,14 @@ sensor:
     unit_of_measurement: "Refreshes"
     state_class: "total_increasing"
     entity_category: "diagnostic"
-    update_interval: 60min
+    update_interval: never # Only updated by script
     lambda: |-
-      return id(recorded_display_refresh);
+      if (isnan(id(display_refreshes).state)) {
+        return 1;
+      }
+      return id(display_refreshes).state;
 
+  # WiFi signal strength
   - platform: wifi_signal
     name: "${device_name} WiFi Signal Strength"
     id: wifisignal
@@ -412,40 +434,35 @@ display:
           it.print(it.get_width(), it.get_height()-36, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, wifi_icon);
         }
 
-        if (id(batt_voltage).has_state() && id(batt_percentage).has_state()) {
+        if (id(battery_percentage).has_state()) {
           // Draw battery icon
           const char* battery_icon = "\U000F125E";  // Default to "Battery slashed" icon
           
-          if (id(batt_percentage).state >= 95) {
+          if (id(battery_percentage).state >= 95) {
               battery_icon = "\U000F0079";  // Battery 100
-          } else if (id(batt_percentage).state >= 90) {
+          } else if (id(battery_percentage).state >= 90) {
               battery_icon = "\U000F0082";  // Battery 90
-          } else if (id(batt_percentage).state >= 80) {
+          } else if (id(battery_percentage).state >= 80) {
               battery_icon = "\U000F0081";  // Battery 80
-          } else if (id(batt_percentage).state >= 70) {
+          } else if (id(battery_percentage).state >= 70) {
               battery_icon = "\U000F0080";  // Battery 70
-          } else if (id(batt_percentage).state >= 60) {
+          } else if (id(battery_percentage).state >= 60) {
               battery_icon = "\U000F007F";  // Battery 60
-          } else if (id(batt_percentage).state >= 50) {
+          } else if (id(battery_percentage).state >= 50) {
               battery_icon = "\U000F007E";  // Battery 50
-          } else if (id(batt_percentage).state >= 40) {
+          } else if (id(battery_percentage).state >= 40) {
               battery_icon = "\U000F007D";  // Battery 40
-          } else if (id(batt_percentage).state >= 30) {
+          } else if (id(battery_percentage).state >= 30) {
               battery_icon = "\U000F007C";  // Battery 30
-          } else if (id(batt_percentage).state >= 20) {
+          } else if (id(battery_percentage).state >= 20) {
               battery_icon = "\U000F007B";  // Battery 20
-          } else if (id(batt_percentage).state >= 10) {
+          } else if (id(battery_percentage).state >= 10) {
               battery_icon = "\U000F007A";  // Battery 10
           }
 
           // Draw battery status text
-          it.print(it.get_width(), it.get_height()-18+1, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, battery_icon);
-          if (id(batt_percentage).has_state()) {
-            it.printf(it.get_width()-18, it.get_height()-18, id(font_footer),  id(colour_black), TextAlign::TOP_RIGHT, "%.0f%%", id(batt_percentage).state);
-          }
+          it.print(it.get_width(), it.get_height()-18+1, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, battery_icon);      
+          it.printf(it.get_width()-18, it.get_height()-18, id(font_footer),  id(colour_black), TextAlign::TOP_RIGHT, "%.0f%%", id(battery_percentage).state);
 
-          // Log battery status
-          ESP_LOGI("battery_status", "Battery percentage: %.1f%%", id(batt_percentage).state);
-          ESP_LOGI("battery_status", "Battery voltage: %.2fV", id(batt_voltage).state);
         }
       }
