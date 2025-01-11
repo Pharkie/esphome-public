@@ -60,19 +60,48 @@ Notes: Lipo 2000mah battery. Buy one with built-in protection against overchargi
 
 ## Software Installation
 
-1. Create a Bitcoin entity to track the Bitcoin price in Home Assistant. In /homeassistant/configuration.yaml, add:
+1. **Track the Bitcoin price**
 
-```
-sensor:
-  # Bitcoin Current Price (USD)
-  - platform: rest
-    name: Bitcoin Current Price
-    unique_id: bitcoin_current_price
-    resource: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
-    value_template: "{{ value_json.bitcoin.usd }}"
-    unit_of_measurement: "USD"
-    scan_interval: 3600  # Update once per hour
-```
-2. HA > Settings > Devices & Services > Helpers > Create Helper >> Toggle. Name it "firebeetle_enable_sleep" for a new entity called "input_boolean.firebeetle_enable_sleep", to match what's in the YAML When this setting is off, the Firebeetle2 will remain awake and ready for OTA updates and monitoring. When it's on (either immediately when turned on, or on when the device boots), the device will sleep as configured.
+    Add a Bitcoin entity to track the Bitcoin price in Home Assistant
 
-3. **Compile and Upload**: Use the ESPHome dashboard to compile and upload the configuration in the YAML "firebeetle2.yaml" to your Firebeetle2.
+    In /homeassistant/configuration.yaml, add:
+
+    ```yaml
+    sensor:
+      # Bitcoin Current Price (USD)
+      - platform: rest
+        name: Bitcoin Current Price
+        unique_id: bitcoin_current_price
+        resource: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd
+        value_template: "{{ value_json.bitcoin.usd }}"
+        unit_of_measurement: "USD"
+        scan_interval: 3600  # Update once per hour
+    ```
+
+2. **Create a toggle for deep sleep**
+    
+    HA > Settings > Devices & Services > Helpers > Create Helper >> Toggle
+    
+    Name your new helper entity "firebeetle_enable_sleep" for a result named "input_boolean.firebeetle_enable_sleep", to match what's in the YAML. When this setting is off, the Firebeetle2 will remain awake and ready for OTA updates and monitoring. When it's on (either immediately when turned on, or on when the device boots), the device will sleep as configured.
+
+3. **Configure secrets.yaml**
+
+    Use a file `secrets.yaml` file to store your WiFi credentials, API encryption key, and OTA password. 
+    
+    Here is an example `secrets.yaml`:
+
+    ```yaml
+    wifi_ssid: "your_wifi_ssid"
+    wifi_password: "your_wifi_password"
+    
+    firebeetle2_api_encryption_key: "your_api_encryption_key"
+    firebeetle2_ota_password: "your_ota_password"
+    ```
+
+    Replace the placeholder values with your actual credentials. 
+    
+    Place `secrets.yaml` in the same directory as your ESPHome configuration files. 
+    
+    Add `secrets.yaml` to .gitignore, if needed.
+
+4. **Compile and Install**: Use the ESPHome dashboard to compile and install the configuration in the YAML "firebeetle2.yaml" to your Firebeetle2.
