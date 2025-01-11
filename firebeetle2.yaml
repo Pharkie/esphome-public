@@ -4,7 +4,9 @@ substitutions:
   device_name: "firebeetle2"
   friendly_name: "Firebeetle2 ESP32-C6 2.9in ePaper"
   sleep_time: 60min
-  wake_time: 60s # Will stay awake less than this, since device put to sleep once screen is updated
+  # Will stay awake less than this, since device put to sleep once screen is updated
+  # Be wary of setting this lower since it can interrupt other processes inc on_boot
+  wake_time: 60s 
   screen_update_time: 5s
 
 logger:
@@ -357,7 +359,7 @@ spi:
 
 display:
   - platform: waveshare_epaper
-    model: 2.90inV2
+    model: 2.90inV2-r2
     cs_pin: 7
     dc_pin: 1
     busy_pin: 3
@@ -368,7 +370,7 @@ display:
     update_interval: never
     id: adam_epaper1
     lambda: |-
-      ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
+      ESP_LOGI("display", ">>> DISPLAY UPDATE <<<     Refresh number: %d", (int)id(display_refreshes).state);
 
       if (isnan(id(bitcoin_current_price).state)) {
         ESP_LOGD("display", "isnan(id(bitcoin_current_price).state == True. Displaying 'Awaiting data...'");
