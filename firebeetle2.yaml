@@ -4,7 +4,7 @@ substitutions:
   device_name: "firebeetle2"
   friendly_name: "Firebeetle2 ESP32-C6 2.9in ePaper"
   sleep_time: 60min
-  wake_time: 30s # Will stay awake less than this, since device put to sleep once screen is updated
+  wake_time: 60s # Will stay awake less than this, since device put to sleep once screen is updated
   screen_update_time: 5s
 
 logger:
@@ -25,11 +25,20 @@ esphome:
   # Boot runs on startup and on wake from deep sleep
   # Sequence: start up, get data, update screen, go back to sleep. Completes in 7 seconds.
   on_boot:
-    priority: -100.0 # # -100 waits till boot of everything else is finished
+    priority: -100.0 # -100 waits till boot of everything else is finished
     then:
-      - logger.log: "Booted, waiting until sensors updated."
-      - script.execute: update_screen # Display "Awaiting data..." while we get data
-      - delay: ${screen_update_time} # Wait for screen refresh
+      - logger.log: "Booted. Waiting until sensors updated."
+      # Display "Awaiting data..." if Bitcoin price not available
+      - if:
+          condition:
+            lambda: 'return isnan(id(bitcoin_current_price).state);'
+          then:
+            - script.execute: update_screen # Display "Awaiting data..." while we get data
+            - logger.log: "Starting delay 1 for screen refresh."
+            - delay: ${screen_update_time} # Wait for screen refresh
+            - logger.log: "Delay 1 for screen refresh completed."
+          else:
+            - logger.log: "Bitcoin price is not NaN, skipping 'Awaiting data' call."
       - wait_until:
           condition:
             and:
@@ -50,11 +59,13 @@ esphome:
                 format: "Boot: timed out waiting for data update."
                 level: WARN
       - script.execute: update_screen # Now update the screen to show the data received
+      - logger.log: "Starting delay 2 for screen refresh."
       - delay: ${screen_update_time} # Wait for screen refresh
+      - logger.log: "Delay 2 for screen refresh completed."
       - script.execute: start_deep_sleep # Go to sleep
 
 safe_mode:
-  boot_is_good_after: 3s  # Reduce the time to consider boot successful
+  boot_is_good_after: 5s  # Reduce the time to consider boot successful
   num_attempts: 5  # Number of failed boot attempts before entering safe mode
   reboot_timeout: 1min  # Duration to remain in safe mode before rebooting
   on_safe_mode:
@@ -72,11 +83,11 @@ esp32:
     sdkconfig_options:
       CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
 
-# Define deep sleep settings. Sleep cycles would begin automatically unless prevented.
+# Define a deep sleep control object
 deep_sleep:
   id: deep_sleep_control
-  run_duration: ${wake_time} # This setting overridden by the time-based sleep/boot cycle.
-  sleep_duration: ${sleep_time}
+  # run_duration: ${wake_time} # Overridden by the timings in on_boot, so best not define.
+  # sleep_duration: ${sleep_time} # Overridden by start_deep_sleep >> sleep_duration, so best not define.
 
 # Enable Home Assistant API
 api:
@@ -359,13 +370,18 @@ display:
     lambda: |-
       ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
 
-      if (isnan(id(bitcoin_current_price).state) && !isnan(id(display_refreshes).state)) {
+      if (isnan(id(bitcoin_current_price).state)) {
+        ESP_LOGD("display", "isnan(id(bitcoin_current_price).state == True. Displaying 'Awaiting data...'");
         it.printf(148, 65, id(font_subtitle), id(colour_black), TextAlign::BASELINE_CENTER, "Awaiting data...");
-        it.printf(148, 85, id(font_footer), id(colour_black), TextAlign::BASELINE_CENTER, "Refreshes: %d", (int)id(display_refreshes).state);
+
+        if (!isnan(id(display_refreshes).state)) {
+          ESP_LOGD("display", "!isnan(id(display_refreshes).state) == True : Displaying 'Refreshes: %d'", (int)id(display_refreshes).state);
+          it.printf(148, 85, id(font_footer), id(colour_black), TextAlign::BASELINE_CENTER, "Refreshes: %d", (int)id(display_refreshes).state);
+        }
       }
       else {
+        ESP_LOGD("display", "isnan(id(bitcoin_current_price).state == False. Displaying Bitcoin price.");
         // Draw main text with formatted price
-        ESP_LOGD("bitcoin_current_price", "Displaying bitcoin price: $%.0f", id(bitcoin_current_price).state);
         ESP_LOGD("bitcoin_current_price", "Formatted Bitcoin price: %s", id(bitcoin_price_formatted).c_str());
         it.printf(it.get_width() / 2, it.get_height()-50, id(font_subtitle), id(colour_black), TextAlign::BOTTOM_CENTER, "Bitcoin: $%s", id(bitcoin_price_formatted).c_str());
 
