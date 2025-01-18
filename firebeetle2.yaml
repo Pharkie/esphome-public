@@ -10,6 +10,13 @@ substitutions:
 logger:
   level: DEBUG # Set logging level (DEBUG for verbose output)
   baud_rate: 115200  # Set the baud rate for logging output
+  # Send logs to Home Assistant, because the device is asleep most of the time
+  on_message:
+    level: DEBUG
+    then:
+      - text_sensor.template.publish:
+          id: status_message
+          state: !lambda 'return x;'
 
 external_components:
   - source:
@@ -49,6 +56,10 @@ esphome:
             - logger.log:
                 format: "Boot: timed out waiting for data update."
                 level: WARN
+      - lambda: |-
+          // Once the time is available, calculate and publish the boot time
+          auto boot_time = id(homeassistant_time).now().timestamp - (int) id(${node_name}_uptime_seconds).state;
+          id(${node_name}_last_boot_time).publish_state(boot_time);
       - script.execute: update_screen # Now update the screen to show the data received
       - delay: ${screen_update_time} # Wait for screen refresh
       - script.execute: start_deep_sleep # Go to sleep
@@ -129,6 +140,11 @@ globals:
     restore_value: no
     initial_value: '""'
 
+text_sensor:
+  - platform: template
+    name: "${device_name} Log"
+    id: log_messages
+
 script:
   - id: update_screen
     mode: queued
@@ -136,8 +152,13 @@ script:
       - logger.log: "Executing update_screen script"
       - lambda: 'id(data_updated) = false;'
       - component.update: adam_epaper1
-      - lambda: 'id(recorded_display_refresh) += 1;'
-      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'
+      - lambda: |-
+          id(recorded_display_refresh) += 1;
+          id(display_refreshes).publish_state(id(recorded_display_refresh));
+          id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);
+      - text_sensor.template.publish:
+          id: status_message
+          state: "Screen updated and refresh count published"
       - logger.log: "Screen updated and refresh count published"
   - id: start_deep_sleep
     mode: queued
@@ -148,11 +169,17 @@ script:
             binary_sensor.is_on: enable_deep_sleep
           then:
             - logger.log: "Deep Sleep Enabled: going to sleep"
+            - text_sensor.template.publish:
+                id: status_message
+                state: "Deep Sleep Enabled: going to sleep"
             - deep_sleep.enter:
                 id: deep_sleep_control
                 sleep_duration: ${sleep_time}         
           else:
             - logger.log: "Deep Sleep Disabled: staying awake"
+            - text_sensor.template.publish:
+                id: status_message
+                state: "Deep Sleep Disabled: staying awake"
             - deep_sleep.prevent: deep_sleep_control
 
 time:
@@ -237,13 +264,17 @@ sensor:
     accuracy_decimals: 0
     update_interval: 60min
     device_class: battery
-    lambda: |-
-      float voltage = id(batt_voltage).state;
-      int percentage = (voltage - 3.3) / (4.1 - 3.3) * 100;
-      if (percentage < 0) {
-        percentage = 0;
-      } else if (percentage > 100) {
+    lambda: |- # New algo for battery percentage
+      float voltage = id(batt_voltage).state / 1000.0; // Convert mV to V
+      int percentage;
+      if (voltage >= 4.2) {
         percentage = 100;
+      } else if (voltage > 3.5) {
+        percentage = (voltage - 3.5) * 142.857; // Linear approximation between 3.5V and 4.2V
+      } else if (voltage > 3.3) {
+        percentage = (voltage - 3.3) * 50; // Linear approximation between 3.3V and 3.5V
+      } else {
+        percentage = 0;
       }
       return percentage;
 
@@ -270,6 +301,27 @@ sensor:
     unit_of_measurement: "dBm"
     entity_category: "diagnostic"
     update_interval: 60min
+
+  # Define Last Boot Sensor (calculation occurs once at boot)
+  - platform: uptime
+    id: ${device_name}_uptime_seconds
+    name: "Uptime Seconds"
+    internal: true
+
+  - platform: template
+    name: "Last Boot"
+    id: ${device_name}_last_boot_time
+    device_class: timestamp
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: never # No regular update needed
+
+# Bitcoin B for background
+image:
+  - file: "images/BitcoinB-v6.png"
+    id: b_of_bitcoin
+    type: BINARY
+    resize: 100x100
 
 # Enable HTTP Request component
 http_request:
@@ -364,6 +416,26 @@ display:
         it.printf(148, 85, id(font_footer), id(colour_black), TextAlign::BASELINE_CENTER, "Refreshes: %d", (int)id(display_refreshes).state);
       }
       else {
+        // Set margin
+        int blanking_margin = 10;
+
+        ////////////////////////////////////
+        // Draw B of the Bitcoin image as background
+        it.image(0, 0, id(b_of_bitcoin), id(colour_black), id(colour_white));
+
+        ////////////////////////////////////
+        // Draw Bitcoin price
+        
+        // Format Bitcoin price
+        char price_str[50];
+        snprintf(price_str, sizeof(price_str), "Bitcoin: $%s", id(bitcoin_price_formatted).c_str());
+
+        // Calculate text width for Bitcoin price
+        int pricetext_width = GetTextWidth(&it, id(font_subtitle), "%s", price_str);
+
+        // Draw blanking rectangle behind Bitcoin price
+        it.filled_rectangle((it.get_width() / 2) - blanking_margin, it.get_height()-50, pricetext_width + (2 * blanking_margin), 40, id(colour_white));
+
         // Draw main text with formatted price
         ESP_LOGD("bitcoin_current_price", "Displaying bitcoin price: $%.0f", id(bitcoin_current_price).state);
         ESP_LOGD("bitcoin_current_price", "Formatted Bitcoin price: %s", id(bitcoin_price_formatted).c_str());
