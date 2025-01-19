@@ -193,7 +193,7 @@ time:
       # Device won't stay awake long enough for a time-based refresh to occur.
       # But leave here in case I disable sleep and want to see display refresh.
       - seconds: 0
-        minutes: /1
+        minutes: /10
         then:
           - script.execute: update_screen
       # If the device boots and the hour is "23", it will sleep until 06:00 the next day.
@@ -216,7 +216,8 @@ wifi:
 sensor:
   - platform: homeassistant
     name: "${device_name} Bitcoin Current Price from HA"
-    entity_id: sensor.bitcoin_current_price
+    entity_id: sensor.trump_current_price # Changed from sensor.bitcoin_current_price
+    # id: bitcoin_current_price
     id: bitcoin_current_price
     on_value:
       then:
@@ -427,7 +428,7 @@ display:
         
         // Format Bitcoin price
         char price_str[50];
-        snprintf(price_str, sizeof(price_str), "Bitcoin: $%s", id(bitcoin_price_formatted).c_str());
+        snprintf(price_str, sizeof(price_str), "Trump: $%s", id(bitcoin_price_formatted).c_str());
 
         // Draw blanking rectangle behind Bitcoin price
         int pricetext_width = GetTextWidth(&it, id(font_subtitle), "%s", price_str);
