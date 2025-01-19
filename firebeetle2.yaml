@@ -410,10 +410,10 @@ display:
       ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
 
       // Set margin
-      int blanking_margin = 10;
+      int blanking_margin = 5;
 
       if (isnan(id(bitcoin_current_price).state) && !isnan(id(display_refreshes).state)) {
-        it.printf(it.get_width() / 2, (it.get_height() / 2) - (30 / 2) - 10, id(font_subtitle), id(colour_black), TextAlign::CENTER, "Awaiting data...");
+        it.printf(it.get_width() / 2, (it.get_height() / 2) - (30 / 2), id(font_subtitle), id(colour_black), TextAlign::CENTER, "Awaiting data...");
         it.printf(it.get_width() / 2, (it.get_height() / 2) + (14 / 2) + 10, id(font_footer), id(colour_black), TextAlign::CENTER, "Refreshes: %d", (int)id(display_refreshes).state);
       }
       else {
@@ -449,7 +449,7 @@ display:
         // Show last updated date and time
         it.strftime(it.get_width()-18, it.get_height()-36, id(font_footer), id(colour_black), TextAlign::TOP_RIGHT, "%d%b%y %H:%M", id(homeassistant_time).now());
         // "Refresh" icon
-        it.print(it.get_width()-18-92, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
+        it.print(it.get_width()-18-95, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
         
         // Draw WiFi signal strength
         if(id(wifisignal).has_state()) {
