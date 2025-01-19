@@ -320,7 +320,6 @@ image:
   - file: "images/BitcoinB-2-9inch.png"
     id: b_of_bitcoin
     type: BINARY
-    resize: 100x100
 
 # Enable HTTP Request component
 http_request:
@@ -436,7 +435,7 @@ display:
         int width = pricetext_width + (2 * blanking_margin);
         int height = 30 + (2 * blanking_margin); // 30 is the font size
         
-        it.filled_rectangle(price_blanking_x, price_blanking_y, width, height, id(colour_white));
+        it.filled_rectangle(price_blanking_x, price_blanking_y, width, height, id(colour_black));
 
         // Draw main text with formatted price
         ESP_LOGD("bitcoin_current_price", "Displaying bitcoin price: $%.0f", id(bitcoin_current_price).state);
