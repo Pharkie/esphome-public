@@ -15,8 +15,11 @@ logger:
     level: DEBUG
     then:
       - text_sensor.template.publish:
-          id: status_message
-          state: !lambda 'return x;'
+          id: log_message_for_HA
+          state: !lambda |-
+            char buffer[256];
+            snprintf(buffer, sizeof(buffer), "[%s] %s", tag, message);
+            return std::string(buffer);
 
 external_components:
   - source:
@@ -28,6 +31,9 @@ external_components:
 
 esphome:
   name: ${device_name}
+
+  includes:
+    - includes/text_utils.h  # Include the text utilities
 
   # Boot runs on startup and on wake from deep sleep
   # Sequence: start up, get data, update screen, go back to sleep. Completes in 7 seconds.
@@ -58,8 +64,8 @@ esphome:
                 level: WARN
       - lambda: |-
           // Once the time is available, calculate and publish the boot time
-          auto boot_time = id(homeassistant_time).now().timestamp - (int) id(${node_name}_uptime_seconds).state;
-          id(${node_name}_last_boot_time).publish_state(boot_time);
+          auto boot_time = id(homeassistant_time).now().timestamp - (int) id(${device_name}_uptime_seconds).state;
+          id(${device_name}_last_boot_time).publish_state(boot_time);
       - script.execute: update_screen # Now update the screen to show the data received
       - delay: ${screen_update_time} # Wait for screen refresh
       - script.execute: start_deep_sleep # Go to sleep
@@ -143,7 +149,8 @@ globals:
 text_sensor:
   - platform: template
     name: "${device_name} Log"
-    id: log_messages
+    id: log_message_for_HA
+    entity_category: diagnostic
 
 script:
   - id: update_screen
@@ -156,9 +163,6 @@ script:
           id(recorded_display_refresh) += 1;
           id(display_refreshes).publish_state(id(recorded_display_refresh));
           id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);
-      - text_sensor.template.publish:
-          id: status_message
-          state: "Screen updated and refresh count published"
       - logger.log: "Screen updated and refresh count published"
   - id: start_deep_sleep
     mode: queued
@@ -169,17 +173,11 @@ script:
             binary_sensor.is_on: enable_deep_sleep
           then:
             - logger.log: "Deep Sleep Enabled: going to sleep"
-            - text_sensor.template.publish:
-                id: status_message
-                state: "Deep Sleep Enabled: going to sleep"
             - deep_sleep.enter:
                 id: deep_sleep_control
                 sleep_duration: ${sleep_time}         
           else:
             - logger.log: "Deep Sleep Disabled: staying awake"
-            - text_sensor.template.publish:
-                id: status_message
-                state: "Deep Sleep Disabled: staying awake"
             - deep_sleep.prevent: deep_sleep_control
 
 time:
@@ -265,7 +263,8 @@ sensor:
     update_interval: 60min
     device_class: battery
     lambda: |- # New algo for battery percentage
-      float voltage = id(batt_voltage).state / 1000.0; // Convert mV to V
+      float voltage = id(batt_voltage).state;
+
       int percentage;
       if (voltage >= 4.2) {
         percentage = 100;
@@ -318,7 +317,7 @@ sensor:
 
 # Bitcoin B for background
 image:
-  - file: "images/BitcoinB-v6.png"
+  - file: "images/BitcoinB-2-9inch.png"
     id: b_of_bitcoin
     type: BINARY
     resize: 100x100
@@ -430,24 +429,27 @@ display:
         char price_str[50];
         snprintf(price_str, sizeof(price_str), "Bitcoin: $%s", id(bitcoin_price_formatted).c_str());
 
-        // Calculate text width for Bitcoin price
-        int pricetext_width = GetTextWidth(&it, id(font_subtitle), "%s", price_str);
-
         // Draw blanking rectangle behind Bitcoin price
-        it.filled_rectangle((it.get_width() / 2) - blanking_margin, it.get_height()-50, pricetext_width + (2 * blanking_margin), 40, id(colour_white));
+        int pricetext_width = GetTextWidth(&it, id(font_subtitle), "Bitcoin: %s", price_str);
+        int price_blanking_x = (it.get_width() / 2) - (pricetext_width / 2) - blanking_margin;
+        int price_blanking_y = it.get_height() - 50 - 15 - blanking_margin; // 15 is half the font size 30
+        int width = pricetext_width + (2 * blanking_margin);
+        int height = 30 + (2 * blanking_margin); // 30 is the font size
+        
+        it.filled_rectangle(price_blanking_x, price_blanking_y, width, height, id(colour_white));
 
         // Draw main text with formatted price
         ESP_LOGD("bitcoin_current_price", "Displaying bitcoin price: $%.0f", id(bitcoin_current_price).state);
         ESP_LOGD("bitcoin_current_price", "Formatted Bitcoin price: %s", id(bitcoin_price_formatted).c_str());
-        it.printf(it.get_width() / 2, it.get_height()-50, id(font_subtitle), id(colour_black), TextAlign::BOTTOM_CENTER, "Bitcoin: $%s", id(bitcoin_price_formatted).c_str());
-
+        it.printf(it.get_width() / 2, it.get_height() - 50, id(font_subtitle), id(colour_black), TextAlign::BOTTOM_CENTER, price_str);
+    
         ///////////////////////////////////
         // System status, (last updated time, wifi signal strength, battery status)
         // Width maths is: display width minus wifi icon minus refresh icon minus text width 
         // Show last updated date and time
         it.strftime(it.get_width()-18, it.get_height()-36, id(font_footer), id(colour_black), TextAlign::TOP_RIGHT, "%d%b%y %H:%M", id(homeassistant_time).now());
         // "Refresh" icon
-        it.print(it.get_width()-18-105, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
+        it.print(it.get_width()-18-100, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
         
         // Draw WiFi signal strength
         if(id(wifisignal).has_state()) {
