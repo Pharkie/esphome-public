@@ -12,7 +12,7 @@ logger:
   baud_rate: 115200  # Set the baud rate for logging output
   # Send logs to Home Assistant, because the device is asleep most of the time
   on_message:
-    level: DEBUG
+    level: WARN
     then:
       - text_sensor.template.publish:
           id: log_message_for_HA
@@ -266,10 +266,10 @@ sensor:
       float voltage = id(batt_voltage).state;
 
       int percentage;
-      if (voltage >= 4.2) {
+      if (voltage >= 4.15) {
         percentage = 100;
       } else if (voltage > 3.5) {
-        percentage = (voltage - 3.5) * 142.857; // Linear approximation between 3.5V and 4.2V
+        percentage = (voltage - 3.5) * 153.846; // Linear approximation between 3.5V and 4.15V
       } else if (voltage > 3.3) {
         percentage = (voltage - 3.3) * 50; // Linear approximation between 3.3V and 3.5V
       } else {
@@ -409,13 +409,14 @@ display:
     lambda: |-
       ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
 
+      // Set margin
+      int blanking_margin = 10;
+
       if (isnan(id(bitcoin_current_price).state) && !isnan(id(display_refreshes).state)) {
-        it.printf(148, 65, id(font_subtitle), id(colour_black), TextAlign::BASELINE_CENTER, "Awaiting data...");
-        it.printf(148, 85, id(font_footer), id(colour_black), TextAlign::BASELINE_CENTER, "Refreshes: %d", (int)id(display_refreshes).state);
+        it.printf(it.get_width() / 2, (it.get_height() / 2) - (30 / 2) - 10, id(font_subtitle), id(colour_black), TextAlign::CENTER, "Awaiting data...");
+        it.printf(it.get_width() / 2, (it.get_height() / 2) + (14 / 2) + 10, id(font_footer), id(colour_black), TextAlign::CENTER, "Refreshes: %d", (int)id(display_refreshes).state);
       }
       else {
-        // Set margin
-        int blanking_margin = 10;
 
         ////////////////////////////////////
         // Draw B of the Bitcoin image as background
@@ -429,18 +430,18 @@ display:
         snprintf(price_str, sizeof(price_str), "Bitcoin: $%s", id(bitcoin_price_formatted).c_str());
 
         // Draw blanking rectangle behind Bitcoin price
-        int pricetext_width = GetTextWidth(&it, id(font_subtitle), "Bitcoin: %s", price_str);
+        int pricetext_width = GetTextWidth(&it, id(font_subtitle), "%s", price_str);
         int price_blanking_x = (it.get_width() / 2) - (pricetext_width / 2) - blanking_margin;
-        int price_blanking_y = it.get_height() - 50 - 15 - blanking_margin; // 15 is half the font size 30
+        int price_blanking_y = (it.get_height() / 2) - 10 - 15 - blanking_margin; // 15 is half the font size 30
         int width = pricetext_width + (2 * blanking_margin);
         int height = 30 + (2 * blanking_margin); // 30 is the font size
         
-        it.filled_rectangle(price_blanking_x, price_blanking_y, width, height, id(colour_black));
+        it.filled_rectangle(price_blanking_x, price_blanking_y, width, height, id(colour_white));
 
         // Draw main text with formatted price
         ESP_LOGD("bitcoin_current_price", "Displaying bitcoin price: $%.0f", id(bitcoin_current_price).state);
         ESP_LOGD("bitcoin_current_price", "Formatted Bitcoin price: %s", id(bitcoin_price_formatted).c_str());
-        it.printf(it.get_width() / 2, it.get_height() - 50, id(font_subtitle), id(colour_black), TextAlign::BOTTOM_CENTER, price_str);
+        it.printf(it.get_width() / 2, (it.get_height() / 2) - 10, id(font_subtitle), id(colour_black), TextAlign::CENTER, price_str);
     
         ///////////////////////////////////
         // System status, (last updated time, wifi signal strength, battery status)
@@ -448,7 +449,7 @@ display:
         // Show last updated date and time
         it.strftime(it.get_width()-18, it.get_height()-36, id(font_footer), id(colour_black), TextAlign::TOP_RIGHT, "%d%b%y %H:%M", id(homeassistant_time).now());
         // "Refresh" icon
-        it.print(it.get_width()-18-100, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
+        it.print(it.get_width()-18-92, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
         
         // Draw WiFi signal strength
         if(id(wifisignal).has_state()) {
