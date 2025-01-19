@@ -56,7 +56,9 @@ Notes: Lipo 2000mah battery. Buy one with built-in protection against overchargi
 
 ### Stand
 
-3D printed from https://www.printables.com/model/266626-waveshare-29-inch-e-ink-screen-stand
+I designed a little stand for this setup: https://makerworld.com/en/models/990598#profileId-966064
+
+Based on an original design from https://www.printables.com/model/266626-waveshare-29-inch-e-ink-screen-stand
 
 ## Software Installation
 
