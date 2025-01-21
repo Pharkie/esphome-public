@@ -3,12 +3,12 @@
 substitutions:
   device_name: "firebeetle2"
   friendly_name: "Firebeetle2 ESP32-C6 2.9in ePaper"
-  sleep_time: 60min
-  wake_time: 30s # Will stay awake less than this, since device put to sleep once screen is updated
-  screen_update_time: 5s
+  sleep_duration: 10min # Was 60min
+  wake_duration: 30s # Will stay awake less than this, since device put to sleep once screen is updated
+  screen_update_duration: 5s
 
 logger:
-  level: DEBUG # Set logging level (DEBUG for verbose output)
+  level: INFO # Set logging level (DEBUG for verbose output)
   baud_rate: 115200  # Set the baud rate for logging output
   # Send logs to Home Assistant, because the device is asleep most of the time
   on_message:
@@ -42,7 +42,7 @@ esphome:
     then:
       - logger.log: "Booted, waiting until sensors updated."
       - script.execute: update_screen # Display "Awaiting data..." while we get data
-      - delay: ${screen_update_time} # Wait for screen refresh
+      - delay: ${screen_update_duration} # Wait for screen refresh
       - wait_until:
           condition:
             and:
@@ -67,7 +67,7 @@ esphome:
           auto boot_time = id(homeassistant_time).now().timestamp - (int) id(${device_name}_uptime_seconds).state;
           id(${device_name}_last_boot_time).publish_state(boot_time);
       - script.execute: update_screen # Now update the screen to show the data received
-      - delay: ${screen_update_time} # Wait for screen refresh
+      - delay: ${screen_update_duration} # Wait for screen refresh
       - script.execute: start_deep_sleep # Go to sleep
 
 safe_mode:
@@ -89,11 +89,11 @@ esp32:
     sdkconfig_options:
       CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
 
-# Define deep sleep settings. Sleep cycles would begin automatically unless prevented.
+# Define deep sleep settings. Sleep cycles begin automatically unless prevented.
 deep_sleep:
   id: deep_sleep_control
-  run_duration: ${wake_time} # This setting overridden by the time-based sleep/boot cycle.
-  sleep_duration: ${sleep_time}
+  run_duration: ${wake_duration} # This setting overridden by the time-based sleep/boot cycle.
+  sleep_duration: ${sleep_duration}
 
 # Enable Home Assistant API
 api:
@@ -175,7 +175,7 @@ script:
             - logger.log: "Deep Sleep Enabled: going to sleep"
             - deep_sleep.enter:
                 id: deep_sleep_control
-                sleep_duration: ${sleep_time}         
+                sleep_duration: ${sleep_duration}         
           else:
             - logger.log: "Deep Sleep Disabled: staying awake"
             - deep_sleep.prevent: deep_sleep_control
@@ -193,7 +193,7 @@ time:
       # Device won't stay awake long enough for a time-based refresh to occur.
       # But leave here in case I disable sleep and want to see display refresh.
       - seconds: 0
-        minutes: /10
+        minutes: /1
         then:
           - script.execute: update_screen
       # If the device boots and the hour is "23", it will sleep until 06:00 the next day.
@@ -203,10 +203,15 @@ time:
       - hours: 23 
         then:
           - logger.log: "Going for a sleep during the night. Good night!"
-          - deep_sleep.enter:
-              id: deep_sleep_control
-              until: "6:00:00"
-              time_id: homeassistant_time
+          - if:
+              condition:
+                binary_sensor.is_on: enable_deep_sleep
+              then:
+                - deep_sleep.enter:
+                    id: deep_sleep_control
+                    until: "6:00:00"
+                    time_id: homeassistant_time
+
 
 wifi:
   ssid: !secret wifi_ssid
