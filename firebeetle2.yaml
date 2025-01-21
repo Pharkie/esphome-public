@@ -169,12 +169,12 @@ script:
     mode: queued
     then:
       - logger.log: "Script 'start_deep_sleep' called"
-      - output.turn_off: internal_led
       - if:
           condition:
             binary_sensor.is_on: enable_deep_sleep
           then:
             - logger.log: "Deep Sleep Enabled: going to sleep"
+            - output.turn_off: internal_led
             - deep_sleep.enter:
                 id: deep_sleep_control
                 sleep_duration: ${sleep_duration}         
