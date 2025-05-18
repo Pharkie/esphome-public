@@ -12,38 +12,43 @@ esp32:
     sdkconfig_options:
       CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
 
-api:
-  encryption:
-    key: "${FIREBEETLE2_75IN_API_ENCRYPTION_KEY}" # Placeholder for GitHub workflow
+# api:
+#   encryption:
+#     key: "${FIREBEETLE2_75IN_API_ENCRYPTION_KEY}" # Placeholder for GitHub workflow
 
-ota:
-  platform: esphome
-  password: "${FIREBEETLE2_75IN_OTA_PASSWORD}" # Placeholder for GitHub workflow
+# ota:
+#   platform: esphome
+#   password: "${FIREBEETLE2_75IN_OTA_PASSWORD}" # Placeholder for GitHub workflow
 
-wifi:
-  ssid: "${WIFI_SSID}" # Placeholder for GitHub workflow
-  password: "${WIFI_PASSWORD}" # Placeholder for GitHub workflow
-  fast_connect: true
+# wifi:
+#   ssid: "${WIFI_SSID}" # Placeholder for GitHub workflow
+#   password: "${WIFI_PASSWORD}" # Placeholder for GitHub workflow
+#   fast_connect: true
 
 logger:
   level: DEBUG # Set logging level (DEBUG for verbose output)
   baud_rate: 115200  # Set the baud rate for logging output
 
-output:
-  - platform: gpio
-    pin: 15
-    id: onboard_led
+# output:
+#   - platform: gpio
+#     pin: 15
+#     id: onboard_led
 
-light:
-  - platform: binary
-    id: onboard_light
-    output: onboard_led
+# light:
+#   - platform: binary
+#     id: onboard_light
+#     output: onboard_led
+
+# interval:
+#   - interval: 3s
+#     then:
+#       - light.toggle: onboard_light
+#       - logger.log: "Toggled onboard LED"
 
 interval:
   - interval: 3s
     then:
-      - light.toggle: onboard_light
-      - logger.log: "Toggled onboard LED"
+      - logger.log: "Hello from Firebeetle2 7.5in minimal test!"
 
 
 # spi:
