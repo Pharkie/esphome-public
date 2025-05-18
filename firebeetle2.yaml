@@ -3,7 +3,7 @@
 substitutions:
   device_name: "firebeetle2"
   friendly_name: "Firebeetle2 ESP32-C6 2.9in ePaper"
-  sleep_duration: 10min # Was 60min
+  sleep_duration: 60min
   wake_duration: 30s # Will stay awake less than this, since device put to sleep once screen is updated
   screen_update_duration: 5s
 
