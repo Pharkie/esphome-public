@@ -1,0 +1,37 @@
+name: Build ESPHome firmware
+
+on:
+  push:
+    branches:
+      - main  # or whatever your branch name is
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Compile ESPHome YAML
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install ESPHome
+        run: |
+          pip install esphome
+
+      - name: Compile firmware
+        run: |
+          mkdir build_output
+          esphome compile firebeetle2-bitcoin75.yaml
+          cp .esphome/build/firebeetle2-bitcoin75/.pioenvs/*/firmware.bin build_output/
+
+      - name: Upload firmware binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: build_output/firmware.bin
