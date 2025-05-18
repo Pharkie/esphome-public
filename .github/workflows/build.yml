@@ -3,7 +3,7 @@ name: Build ESPHome firmware
 on:
   push:
     branches:
-      - main  # or whatever your branch name is
+      - main  # Main branch
   workflow_dispatch:
 
 jobs:
