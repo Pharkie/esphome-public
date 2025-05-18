@@ -26,7 +26,7 @@ jobs:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-esphome
 
-      - name: 💾 Cache PlatformIO and ESPHome build
+      - name: 💾 Cache PlatformIO
         uses: actions/cache@v3
         with:
           path: |
@@ -48,12 +48,19 @@ jobs:
           . venv/bin/activate
           esphome compile expanded.yaml
 
-      - name: 📤 Copy factory firmware to output folder
-        run: |
-          cp .esphome/build/firebeetle2-bitcoin75/.pioenvs/*/firmware.bin build_output/firebeetle2-bitcoin75.bin
+          # Find the firmware.bin file safely
+          FIRMWARE_PATH=$(find .esphome/build/firebeetle2-bitcoin75/.pioenvs -name firmware.bin | head -n1)
 
-      - name: 📦 Upload compiled firmware
+          if [ -z "$FIRMWARE_PATH" ]; then
+            echo "❌ Firmware binary not found!"
+            exit 1
+          else
+            echo "✅ Found firmware at $FIRMWARE_PATH"
+            cp "$FIRMWARE_PATH" build_output/firebeetle2-bitcoin75.firmware.bin
+          fi
+
+      - name: 📤 Upload firmware binary
         uses: actions/upload-artifact@v4
         with:
           name: firebeetle2-firmware
-          path: build_output/firebeetle2-bitcoin75.factory.bin
+          path: build_output/firebeetle2-bitcoin75.firmware.bin
