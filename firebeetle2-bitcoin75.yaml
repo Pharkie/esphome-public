@@ -1,0 +1,53 @@
+esphome:
+  name: firebeetle2-bitcoin75
+
+esp32:
+  board: esp32-c6-devkitc-1
+  flash_size: 4MB
+  variant: esp32c6
+  framework:
+    type: esp-idf
+    version: "5.3.1"
+    platform_version: 6.9.0
+    sdkconfig_options:
+      CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret firebeetle2_75in_api_encryption_key
+
+ota:
+  platform: esphome
+  password: !secret firebeetle2_75in_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+
+logger:
+  level: DEBUG # Set logging level (DEBUG for verbose output)
+  baud_rate: 115200  # Set the baud rate for logging output
+
+spi:
+  clk_pin: 23
+  mosi_pin: 22
+
+font:
+  - file: "gfonts://Roboto"
+    id: font1
+    size: 24
+
+display:
+  - platform: waveshare_epaper
+    model: 7.50inV2
+    cs_pin: 5
+    dc_pin: 16
+    busy_pin: 18
+    reset_pin: 2
+    rotation: 0
+    update_interval: 1min
+    id: adam_epaper1
+    lambda: |-
+      it.print(10, 10, id(font1), "Hello ePaper!");
