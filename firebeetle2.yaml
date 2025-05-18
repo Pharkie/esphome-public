@@ -210,7 +210,6 @@ sensor:
   - platform: homeassistant
     name: "${device_name} Bitcoin Current Price from HA"
     entity_id: sensor.trump_current_price # Changed from sensor.bitcoin_current_price
-    # id: bitcoin_current_price
     id: bitcoin_current_price
     on_value:
       then:
