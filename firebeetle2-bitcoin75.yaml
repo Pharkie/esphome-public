@@ -47,26 +47,21 @@ logger:
   level: DEBUG # Set logging level (DEBUG for verbose output)
   baud_rate: 115200  # Set the baud rate for logging output
 
+output:
+  - platform: gpio
+    pin: 15
+    id: onboard_led
+
+light:
+  - platform: binary
+    id: onboard_light
+    output: onboard_led
+
 interval:
-  - interval: 3s
+  - interval: 5s
     then:
-      - logger.log: "Hello from Firebeetle2 7.5in minimal test!"
-
-# output:
-#   - platform: gpio
-#     pin: 15
-#     id: onboard_led
-
-# light:
-#   - platform: binary
-#     id: onboard_light
-#     output: onboard_led
-
-# interval:
-#   - interval: 3s
-#     then:
-#       - light.toggle: onboard_light
-#       - logger.log: "Toggled onboard LED"
+      - logger.log: "Hello. Toggling LED!"
+      - light.toggle: onboard_light
 
 # spi:
 #   clk_pin: 23
