@@ -1,4 +1,4 @@
-name: Build ESPHome firmware
+name: Build ESPHome Firmware
 
 on:
   push:
@@ -10,32 +10,47 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      WIFI_SSID: ${{ secrets.WIFI_SSID }}
+      WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
+      FIREBEETLE2_75IN_API_ENCRYPTION_KEY: ${{ secrets.FIREBEETLE2_75IN_API_ENCRYPTION_KEY }}
+      FIREBEETLE2_75IN_OTA_PASSWORD: ${{ secrets.FIREBEETLE2_75IN_OTA_PASSWORD }}
+
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: 💾 Cache pip packages
+        uses: actions/cache@v3
         with:
-          python-version: 3.11
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-esphome
 
-      - name: Install ESPHome
-        run: pip install esphome
+      - name: 💾 Cache PlatformIO
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.platformio
+            .esphome/build
+          key: ${{ runner.os }}-platformio-esphome
 
-      - name: Inject secrets and compile
-        env:
-          WIFI_SSID: ${{ secrets.WIFI_SSID }}
-          WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
-          API_KEY: ${{ secrets.API_KEY }}
-          OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
+      - name: 🐍 Use system Python and install ESPHome
         run: |
-          mkdir build_output
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip
+          pip install esphome
+
+      - name: ⚙️ Build firmware with injected secrets
+        run: |
+          mkdir -p build_output
           envsubst < firebeetle2-bitcoin75.yaml > expanded.yaml
+          . venv/bin/activate
           esphome compile expanded.yaml
           cp .esphome/build/firebeetle2-bitcoin75/.pioenvs/*/firmware.bin build_output/
 
-      - name: Upload firmware binary
+      - name: 📤 Upload firmware binary
         uses: actions/upload-artifact@v4
         with:
-          name: firmware
+          name: firebeetle2-firmware
           path: build_output/firmware.bin
