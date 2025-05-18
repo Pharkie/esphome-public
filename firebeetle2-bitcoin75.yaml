@@ -12,7 +12,6 @@ esp32:
     sdkconfig_options:
       CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
 
-# Enable Home Assistant API
 api:
   encryption:
     key: "${FIREBEETLE2_75IN_API_ENCRYPTION_KEY}" # Placeholder for GitHub workflow
@@ -30,24 +29,46 @@ logger:
   level: DEBUG # Set logging level (DEBUG for verbose output)
   baud_rate: 115200  # Set the baud rate for logging output
 
-spi:
-  clk_pin: 23
-  mosi_pin: 22
+output:
+  - platform: gpio
+    pin: 15
+    id: onboard_led
 
-font:
-  - file: "gfonts://Roboto"
-    id: font1
-    size: 24
+light:
+  - platform: binary
+    name: "Onboard LED"
+    output: onboard_led
+    id: onboard_light
 
-display:
-  - platform: waveshare_epaper
-    model: 7.50inV2
-    cs_pin: 5
-    dc_pin: 16
-    busy_pin: 18
-    reset_pin: 2
-    rotation: 0
-    update_interval: 1min
-    id: adam_epaper1
-    lambda: |-
-      it.print(10, 10, id(font1), "Hello ePaper!");
+interval:
+  - interval: 1s
+    then:
+      - light.turn_on: onboard_light
+      - delay: 500ms
+      - light.turn_off: onboard_light
+      - delay: 500ms
+      - logger.log: "Boot complete ✅"
+      - interval.stop: interval
+
+
+# spi:
+#   clk_pin: 23
+#   mosi_pin: 22
+
+# font:
+#   - file: "gfonts://Roboto"
+#     id: font1
+#     size: 24
+
+# display:
+#   - platform: waveshare_epaper
+#     model: 7.50inV2
+#     cs_pin: 5
+#     dc_pin: 16
+#     busy_pin: 18
+#     reset_pin: 2
+#     rotation: 0
+#     update_interval: 1min
+#     id: adam_epaper1
+#     lambda: |-
+#       it.print(10, 10, id(font1), "Hello ePaper!");
