@@ -3,13 +3,12 @@ name: Build ESPHome firmware
 on:
   push:
     branches:
-      - main  # Main branch
+      - main
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Compile ESPHome YAML
 
     steps:
       - name: Checkout repository
@@ -21,13 +20,18 @@ jobs:
           python-version: 3.11
 
       - name: Install ESPHome
-        run: |
-          pip install esphome
+        run: pip install esphome
 
-      - name: Compile firmware
+      - name: Inject secrets and compile
+        env:
+          WIFI_SSID: ${{ secrets.WIFI_SSID }}
+          WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
+          API_KEY: ${{ secrets.API_KEY }}
+          OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
         run: |
           mkdir build_output
-          esphome compile firebeetle2-bitcoin75.yaml
+          envsubst < firebeetle2-bitcoin75.yaml > expanded.yaml
+          esphome compile expanded.yaml
           cp .esphome/build/firebeetle2-bitcoin75/.pioenvs/*/firmware.bin build_output/
 
       - name: Upload firmware binary
