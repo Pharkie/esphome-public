@@ -36,19 +36,14 @@ output:
 
 light:
   - platform: binary
-    name: "Onboard LED"
-    output: onboard_led
     id: onboard_light
+    output: onboard_led
 
 interval:
-  - interval: 1s
+  - interval: 3s
     then:
-      - light.turn_on: onboard_light
-      - delay: 500ms
-      - light.turn_off: onboard_light
-      - delay: 500ms
-      - logger.log: "Boot complete ✅"
-      - interval.stop: interval
+      - light.toggle: onboard_light
+      - logger.log: "Toggled onboard LED"
 
 
 # spi:
