@@ -44,7 +44,7 @@ wifi:
   fast_connect: true
 
 logger:
-  level: DEBUG # Set logging level (DEBUG for verbose output)
+  level: INFO # Set logging level (DEBUG for verbose output)
   baud_rate: 115200  # Set the baud rate for logging output
 
 output:
@@ -63,24 +63,24 @@ interval:
       - logger.log: "Hello. Toggling LED!"
       - light.toggle: onboard_light
 
-# spi:
-#   clk_pin: 23
-#   mosi_pin: 22
+spi:
+  clk_pin: 23
+  mosi_pin: 22
 
-# font:
-#   - file: "gfonts://Roboto"
-#     id: font1
-#     size: 24
+font:
+  - file: "gfonts://Roboto"
+    id: font1
+    size: 24
 
-# display:
-#   - platform: waveshare_epaper
-#     model: 7.50inV2
-#     cs_pin: 5
-#     dc_pin: 16
-#     busy_pin: 18
-#     reset_pin: 2
-#     rotation: 0
-#     update_interval: 1min
-#     id: adam_epaper1
-#     lambda: |-
-#       it.print(10, 10, id(font1), "Hello ePaper!");
+display:
+  - platform: waveshare_epaper
+    model: 7.50inV2
+    cs_pin: 5
+    dc_pin: 16
+    busy_pin: 18
+    reset_pin: 2
+    rotation: 0
+    update_interval: 1min
+    id: adam_epaper1
+    lambda: |-
+      it.print(10, 10, id(font1), "Hello ePaper!");
