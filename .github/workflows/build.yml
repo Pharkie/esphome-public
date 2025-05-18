@@ -50,7 +50,7 @@ jobs:
 
       - name: 📤 Copy factory firmware to output folder
         run: |
-          cp .esphome/build/firebeetle2-bitcoin75/.pioenvs/*/factory.bin build_output/firebeetle2-bitcoin75.factory.bin
+          cp .esphome/build/firebeetle2-bitcoin75/.pioenvs/*/firmware.bin build_output/firebeetle2-bitcoin75.bin
 
       - name: 📦 Upload compiled firmware
         uses: actions/upload-artifact@v4

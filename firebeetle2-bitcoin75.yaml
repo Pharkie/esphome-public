@@ -12,6 +12,11 @@ esp32:
     sdkconfig_options:
       CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
 
+mdns:
+
+web_server:
+  port: 80
+
 # api:
 #   encryption:
 #     key: !secret firebeetle2_75in_api_encryption_key
