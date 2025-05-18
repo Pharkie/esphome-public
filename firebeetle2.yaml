@@ -419,7 +419,7 @@ display:
 
         ////////////////////////////////////
         // Draw B of the Bitcoin image as background
-        it.image(0, 0, id(b_of_bitcoin), id(colour_black), id(colour_white));
+        it.image(0, 0, id(b_of_bitcoin), id(colour_white), id(colour_black));
 
         ////////////////////////////////////
         // Draw Bitcoin price
