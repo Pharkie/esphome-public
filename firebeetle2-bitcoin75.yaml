@@ -74,6 +74,10 @@ font:
     id: font1
     size: 24
 
+color:
+  - id: colour_white
+    hex: "000000"
+
 display:
   - platform: waveshare_epaper
     model: 7.50inV2alt
@@ -89,4 +93,5 @@ display:
     id: adam_epaper1
     lambda: |-
       ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
+      it.fill(id(colour_white)); 
       it.print(10, 10, id(font1), "Hello ePaper!");
