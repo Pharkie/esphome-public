@@ -103,7 +103,8 @@ color:
 
 display:
   - platform: waveshare_epaper
-    model: 7.50inV2
+    model: 7.50inV2alt
+    # model: 7.50inV2
     # cs_pin: 5
     # dc_pin: 16
     # busy_pin:
@@ -114,7 +115,7 @@ display:
     dc_pin: 1
     busy_pin:
       number: 3
-      # inverted: true
+      inverted: true
     reset_pin: 2
     reset_duration: 2ms
     rotation: 0
