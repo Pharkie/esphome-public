@@ -83,8 +83,10 @@ display:
       number: 18
       inverted: true
     reset_pin: 2
+    reset_duration: 2ms
     rotation: 0
-    update_interval: 1min
+    update_interval: never
     id: adam_epaper1
     lambda: |-
+      ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
       it.print(10, 10, id(font1), "Hello ePaper!");

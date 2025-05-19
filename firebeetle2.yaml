@@ -447,7 +447,7 @@ display:
         // Show last updated date and time
         it.strftime(it.get_width()-18, it.get_height()-36, id(font_footer), id(colour_black), TextAlign::TOP_RIGHT, "%d%b%y %H:%M", id(homeassistant_time).now());
         // "Refresh" icon
-        it.print(it.get_width()-18-95, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
+        it.print(it.get_width()-18-100, it.get_height()-36+2, id(font_mdi), id(colour_black), TextAlign::TOP_RIGHT, "\U000F0450");
         
         // Draw WiFi signal strength
         if(id(wifisignal).has_state()) {
