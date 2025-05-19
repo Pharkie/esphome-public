@@ -1,6 +1,9 @@
 esphome:
   name: firebeetle2-bitcoin75
 
+  includes:
+    - includes/text_utils.h  # Include the text utilities
+
 esp32:
   board: esp32-c6-devkitc-1
   flash_size: 4MB
@@ -72,13 +75,31 @@ spi:
   mosi_pin: 6 # DIN
 
 font:
-  - file: "gfonts://Roboto"
-    id: font1
-    size: 24
+  - file:
+      type: gfonts
+      family: Montserrat
+      weight: 700
+    size: 30
+    id: font_title
+    extras: # Add dollar symbol $
+      - file: "gfonts://Montserrat"
+        glyphs: [$]
+
+  - file:
+      type: gfonts
+      family: Montserrat
+      weight: 400
+    size: 30
+    id: font_subtitle
+    extras: # Add dollar symbol $
+      - file: "gfonts://Montserrat"
+        glyphs: [$]
 
 color:
   - id: colour_white
     hex: "000000"
+  - id: colour_black
+    hex: "FFFFFF"
 
 display:
   - platform: waveshare_epaper
@@ -93,7 +114,7 @@ display:
     dc_pin: 1
     busy_pin:
       number: 3
-      # inverted: true
+      inverted: true
     reset_pin: 2
     reset_duration: 2ms
     rotation: 0
@@ -101,5 +122,7 @@ display:
     id: adam_epaper1
     lambda: |-
       ESP_LOGI("display", ">>> DISPLAY UPDATE <<<");
-      it.fill(id(colour_white)); 
-      it.print(10, 10, id(font1), "Hello ePaper!");
+      it.fill(id(colour_white));
+
+      it.printf(it.get_width() / 2, (it.get_height() / 2) - (30 / 2), id(font_subtitle), id(colour_black), TextAlign::CENTER, "Awaiting data...");
+      it.printf(it.get_width() / 2, (it.get_height() / 2) + (30 / 2), id(font_subtitle), id(colour_white), TextAlign::CENTER, "testingtestingtesting");
